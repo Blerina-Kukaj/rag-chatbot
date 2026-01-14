@@ -9,22 +9,13 @@ Centralizes all app-level constants and default values.
 # Page Configuration
 # =============================================================================
 PAGE_TITLE = "RAG Chatbot - Giga Academy"
-PAGE_ICON = "🤖"
+PAGE_ICON = "⬛"
 LAYOUT = "wide"
 
 # =============================================================================
 # App Display Settings
 # =============================================================================
-APP_TITLE = "📚 RAG Chatbot"
-APP_DESCRIPTION = """
-A Retrieval-Augmented Generation chatbot that answers questions using a curated knowledge base.
-
-**Features:**
-- Pre-loaded industry documents
-- Answers grounded ONLY in the knowledge base
-- Shows citations (document name + page/chunk)
-- Says "I don't know" when information isn't available
-"""
+APP_TITLE = "RAG Chatbot"
 
 # =============================================================================
 # Default Parameters
@@ -56,12 +47,12 @@ VECTORSTORE_DIR = "vectorstore"  # Where FAISS index is persisted
 # UI Messages
 # =============================================================================
 WELCOME_MESSAGE = """
-👋 **Welcome to the RAG Chatbot!**
+ **Welcome to the RAG Chatbot!**
 
 **How to use:**
-1. � Click **"Build Knowledge Base"** in the sidebar (first time only)
-2. 💬 Ask questions in the chat below
-3. 📚 Get grounded answers with citations
+1.  Click **"Build Knowledge Base"** in the sidebar (first time only)
+2.  Ask questions in the chat below
+3.  Get grounded answers with citations
 
 *The chatbot answers only from the pre-loaded knowledge base.*
 """
