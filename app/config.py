@@ -66,5 +66,5 @@ ERROR_API_KEY = "❌ OpenAI API key not found. Please set OPENAI_API_KEY in your
 # =============================================================================
 # Citation Display
 # =============================================================================
-CITATION_HEADER = "📚 **Sources:**"
+CITATION_HEADER = "**Sources:**"
 NO_SOURCES_MESSAGE = "No sources available for this response."

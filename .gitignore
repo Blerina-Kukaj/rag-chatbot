@@ -60,3 +60,11 @@ htmlcov/
 # Logs
 *.log
 logs/
+
+# Scripts
+scripts/
+
+# Data
+data/
+
+test_rag.py
