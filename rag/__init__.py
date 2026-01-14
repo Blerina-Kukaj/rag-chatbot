@@ -8,7 +8,6 @@ This package provides all core functionality for the RAG chatbot:
 - FAISS vector store management
 - Top-K retrieval (vector, hybrid, reranked)
 - QA chain with grounded responses and citations
-- Conversation memory
 - Guardrails for security
 
 Project: Giga Academy Cohort IV - RAG Chatbot
@@ -40,7 +39,6 @@ from rag.guardrails import (
     wrap_context_safely,
     get_safe_system_prompt,
 )
-from rag.memory import ConversationMemory, create_conversational_prompt
 
 __all__ = [
     # Ingestion
@@ -77,7 +75,4 @@ __all__ = [
     "validate_input",
     "wrap_context_safely",
     "get_safe_system_prompt",
-    # Memory
-    "ConversationMemory",
-    "create_conversational_prompt",
 ]
