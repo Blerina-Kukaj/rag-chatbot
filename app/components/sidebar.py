@@ -117,7 +117,14 @@ def render_sidebar() -> Dict[str, Any]:
         # =================================================================
         # Memory & Guardrails
         # =================================================================
-        with st.expander("Security", expanded=False):
+        with st.expander("Advanced Features", expanded=False):
+            # Conversation Memory
+            use_memory = st.checkbox(
+                "Enable Conversation Memory",
+                value=False,
+                help="Maintain conversation context across questions for follow-up queries."
+            )
+            
             # Guardrails
             enable_guardrails = st.checkbox(
                 "Enable Guardrails",
@@ -192,6 +199,8 @@ def render_sidebar() -> Dict[str, Any]:
             active_features.append("Hybrid")
         if use_reranking:
             active_features.append("Rerank")
+        if use_memory:
+            active_features.append("Memory")
         if enable_guardrails:
             active_features.append("Guardrails")
         
@@ -238,7 +247,7 @@ def render_sidebar() -> Dict[str, Any]:
             # Advanced features
             "use_hybrid": use_hybrid,
             "use_reranking": use_reranking,
-            "use_memory": False,  # Disabled
+            "use_memory": use_memory,
             "memory_turns": 5,  # Default
             "enable_guardrails": enable_guardrails,
             "metadata_filter": None,  # Disabled

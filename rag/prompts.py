@@ -21,9 +21,10 @@ CRITICAL RULES YOU MUST FOLLOW:
 1. Answer ONLY using information explicitly stated in the provided context
 2. If the answer is NOT in the context, you MUST say: "I cannot find this information in the provided documents."
 3. NEVER make up information or use knowledge outside the provided context
-4. Always cite your sources using the document references provided (e.g., [filename, Page X, Chunk Y])
-5. Be concise and direct in your answers
-6. If the context is ambiguous or incomplete, acknowledge this limitation
+4. NEVER include any citation formatting, references, or placeholders like [Document Name, Page X, Chunk Y] in your answers
+5. Citations and sources will be added automatically by the system - do not include them yourself
+6. Be concise and direct in your answers
+7. If the context is ambiguous or incomplete, acknowledge this limitation
 
 Remember: It is better to say "I don't know" than to provide incorrect information."""
 
@@ -39,8 +40,10 @@ QUESTION: {question}
 INSTRUCTIONS:
 - Answer based ONLY on the context above
 - If the answer is not in the context, say "I cannot find this information in the provided documents."
-- Include citations in your answer using the format: [Document Name, Page X, Chunk Y]
 - Be concise and accurate
+- IMPORTANT: Do NOT include ANY citation formatting, references, or placeholders in your answer
+- Citations and sources will be displayed automatically below your answer - you should not add them yourself
+- Just provide the factual answer without any brackets, references, or document mentions
 
 ANSWER:"""
 
@@ -103,7 +106,9 @@ INSTRUCTIONS:
 - Answer based ONLY on the context above
 - You may reference the previous conversation for context about what the user is asking
 - If the answer is not in the context, say "I cannot find this information in the provided documents."
-- Include citations using the format: [Document Name, Page X, Chunk Y]
+- IMPORTANT: Do NOT include ANY citation formatting, references, or placeholders in your answer
+- Citations and sources will be displayed automatically below your answer - you should not add them yourself
+- Just provide the factual answer without any brackets, references, or document mentions
 
 ANSWER:"""
 

@@ -63,10 +63,33 @@ from rag.vector_store import (
     delete_vector_store,
 )
 from rag.retriever import create_retriever, retrieve_documents
-from rag.qa_chain import create_qa_chain, ask_question, get_source_details
+from rag.qa_chain import create_qa_chain, ask_question, get_source_details, ConversationMemory
 from rag.hybrid_search import create_hybrid_retriever
 from rag.reranker import CrossEncoderReranker
 from rag.guardrails import validate_input, wrap_context_safely, detect_prompt_injection
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.documents import Document
+from langchain_core.callbacks import CallbackManagerForRetrieverRun
+from typing import List
+
+
+# Simple retriever that returns pre-fetched documents
+class PreFetchedRetriever(BaseRetriever):
+    """Retriever that returns pre-fetched documents."""
+    
+    documents: List[Document]
+    
+    def _get_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun = None
+    ) -> List[Document]:
+        """Return the pre-fetched documents."""
+        return self.documents
+    
+    async def _aget_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun = None
+    ) -> List[Document]:
+        """Async version."""
+        return self.documents
 
 
 # =============================================================================
@@ -269,6 +292,10 @@ def initialize_session_state() -> None:
     if "reranker" not in st.session_state:
         st.session_state.reranker = None
     
+    # Conversation memory
+    if "conversation_memory" not in st.session_state:
+        st.session_state.conversation_memory = ConversationMemory()
+    
     # Initialize chat history
     initialize_chat_history()
 
@@ -454,17 +481,21 @@ def process_question(question: str, sidebar_state: dict) -> None:
     display_user_message(question)
     add_message("user", question)
     
-    # Step 2: Enhance query with memory context
-    enhanced_query = question
-    if use_memory and st.session_state.conversation_memory.turns:
-        context_prefix = st.session_state.conversation_memory.get_context_for_query(question)
-        if context_prefix:
-            enhanced_query = context_prefix + question
-    
     # Generate answer
     with display_thinking_indicator():
         try:
-            # Step 3: Retrieve documents
+            # Step 3: Prepare query for retrieval
+            # If memory is enabled, add context to help retrieval understand references
+            retrieval_query = question
+            if use_memory and st.session_state.conversation_memory.turns:
+                # Get last topic for context
+                last_turn = st.session_state.conversation_memory.turns[-1]
+                last_question = last_turn.get("question", "")
+                # Add simple context hint for short questions
+                if len(question.split()) <= 5 and last_question:
+                    retrieval_query = f"{last_question} {question}"
+            
+            # Step 3b: Retrieve relevant documents
             retrieval_method = "vector"
             
             if use_hybrid and st.session_state.chunks:
@@ -474,12 +505,12 @@ def process_question(question: str, sidebar_state: dict) -> None:
                     st.session_state.vectorstore,
                     st.session_state.chunks,
                 )
-                retrieved_docs = hybrid_retriever.retrieve(enhanced_query, k=top_k * 2 if use_reranking else top_k)
+                retrieved_docs = hybrid_retriever.retrieve(retrieval_query, k=top_k * 2 if use_reranking else top_k)
             else:
                 # Use standard vector retrieval
                 retrieved_docs = retrieve_documents(
                     st.session_state.vectorstore,
-                    enhanced_query,
+                    retrieval_query,
                     k=top_k * 2 if use_reranking else top_k,
                     filter_dict=metadata_filter,
                 )
@@ -498,7 +529,7 @@ def process_question(question: str, sidebar_state: dict) -> None:
                 
                 if st.session_state.reranker:
                     retrieved_docs = st.session_state.reranker.rerank_documents(
-                        question, retrieved_docs, top_k=top_k
+                        retrieval_query, retrieved_docs, top_k=top_k
                     )
                 else:
                     retrieved_docs = retrieved_docs[:top_k]
@@ -507,16 +538,28 @@ def process_question(question: str, sidebar_state: dict) -> None:
             retrieved_docs = retrieved_docs[:top_k]
             
             # Step 5: Create retriever and QA chain
-            retriever = create_retriever(
-                st.session_state.vectorstore,
-                k=top_k,
-                filter_dict=metadata_filter,
-            )
+            # If we manually retrieved docs (hybrid/reranking), use those instead of re-retrieving
+            if use_hybrid or use_reranking:
+                # Use pre-fetched retriever to preserve our hybrid/reranked results
+                retriever = PreFetchedRetriever(documents=retrieved_docs)
+            else:
+                # Standard vector retriever
+                retriever = create_retriever(
+                    st.session_state.vectorstore,
+                    k=top_k,
+                    filter_dict=metadata_filter,
+                )
             
             qa_chain = create_qa_chain(retriever)
             
-            # Step 6: Ask question
-            response = ask_question(qa_chain, question)
+            # Step 6: Ask question with conversation memory
+            chat_history = None
+            if use_memory:
+                # Get previous conversation context
+                chat_history = st.session_state.conversation_memory.get_formatted_history()
+            
+            # Ask the question
+            response = ask_question(qa_chain, question, chat_history)
             
             # Extract answer and sources
             answer = response.get("result", "I couldn't generate an answer.")
@@ -526,7 +569,7 @@ def process_question(question: str, sidebar_state: dict) -> None:
             if "cannot find" in answer.lower() and "provided documents" in answer.lower():
                 sources = []
             
-            # Step 7: Update conversation memory
+            # Step 7: Update conversation memory AFTER getting the answer
             if use_memory:
                 st.session_state.conversation_memory.add_turn(
                     question=question,

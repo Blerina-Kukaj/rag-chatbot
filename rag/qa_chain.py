@@ -26,6 +26,45 @@ DEFAULT_MODEL = "gpt-3.5-turbo"
 DEFAULT_TEMPERATURE = 0.0  # Low temperature for factual, grounded responses
 
 
+class ConversationMemory:
+    """
+    Simple conversation memory for maintaining context across turns.
+    Stores question-answer pairs and formats them for the prompt.
+    """
+    
+    def __init__(self, max_turns: int = 3):
+        self.turns = []
+        self.max_turns = max_turns
+    
+    def add_turn(self, question: str, answer: str, sources: list = None):
+        """Add a Q&A turn to memory."""
+        self.turns.append({
+            "question": question,
+            "answer": answer,
+            "sources": sources or []
+        })
+        
+        # Keep only recent turns
+        if len(self.turns) > self.max_turns:
+            self.turns = self.turns[-self.max_turns:]
+    
+    def get_formatted_history(self) -> str:
+        """Get formatted chat history for the prompt."""
+        if not self.turns:
+            return "No previous conversation."
+        
+        formatted = []
+        for turn in self.turns:
+            formatted.append(f"User: {turn['question']}")
+            formatted.append(f"Assistant: {turn['answer']}")
+        
+        return "\n".join(formatted)
+    
+    def clear(self):
+        """Clear all conversation history."""
+        self.turns = []
+
+
 def create_llm(
     model_name: str = DEFAULT_MODEL,
     temperature: float = DEFAULT_TEMPERATURE,
@@ -120,6 +159,7 @@ def create_qa_chain(
 def ask_question(
     qa_chain: RetrievalQA,
     question: str,
+    chat_history: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Ask a question using the QA chain.
@@ -127,6 +167,7 @@ def ask_question(
     Args:
         qa_chain: Configured RetrievalQA chain
         question: User's question
+        chat_history: Formatted chat history to provide context
         
     Returns:
         Dictionary with:
@@ -141,8 +182,21 @@ def ask_question(
             "source_documents": [],
         }
     
+    # If chat history is provided, prepend it to the question for context
+    enhanced_question = question
+    if chat_history and chat_history != "No previous conversation.":
+        enhanced_question = f"""Previous conversation:
+{chat_history}
+
+Current question: {question}
+
+Note: Use the previous conversation to understand context, but answer only from the provided documents."""
+    
     # Invoke the chain
-    response = qa_chain.invoke({"query": question})
+    response = qa_chain.invoke({"query": enhanced_question})
+    
+    # Store the original question in the response
+    response["original_query"] = question
     
     return response
 

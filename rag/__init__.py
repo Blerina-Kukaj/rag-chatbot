@@ -30,7 +30,7 @@ from rag.vector_store import (
 )
 from rag.retriever import create_retriever
 from rag.prompts import get_qa_prompt
-from rag.qa_chain import create_qa_chain, ask_question
+from rag.qa_chain import create_qa_chain, ask_question, ConversationMemory
 from rag.hybrid_search import HybridRetriever, create_hybrid_retriever
 from rag.reranker import CrossEncoderReranker, rerank_documents
 from rag.guardrails import (
@@ -70,6 +70,7 @@ __all__ = [
     # QA Chain
     "create_qa_chain",
     "ask_question",
+    "ConversationMemory",
     # Guardrails
     "detect_prompt_injection",
     "validate_input",
