@@ -16,9 +16,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 import tiktoken
 
 
-# Token limits for chunking (per project requirements: 400-500 tokens, 50-100 overlap)
-CHUNK_SIZE = 450  # Target: 400-500 tokens (middle of range)
-CHUNK_OVERLAP = 75  # Target: 50-100 tokens (middle of range)
+# Token limits for chunking (optimized for scientific papers)
+CHUNK_SIZE = 550 
+CHUNK_OVERLAP = 100  
 
 # Tiktoken encoding for OpenAI models (text-embedding-3-small uses cl100k_base)
 ENCODING_NAME = "cl100k_base"

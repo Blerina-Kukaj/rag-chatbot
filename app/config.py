@@ -20,9 +20,9 @@ APP_TITLE = "RAG Chatbot"
 # =============================================================================
 # Default Parameters
 # =============================================================================
-DEFAULT_TOP_K = 3  # Number of chunks to retrieve
-DEFAULT_CHUNK_SIZE = 450  # Tokens per chunk (range: 400-500)
-DEFAULT_CHUNK_OVERLAP = 75  # Overlap tokens (range: 50-100)
+DEFAULT_TOP_K = 5  # Increased for scientific content complexity
+DEFAULT_CHUNK_SIZE = 550  # Tokens per chunk (range: 400-500)
+DEFAULT_CHUNK_OVERLAP = 100  # Overlap tokens (range: 50-100)
 
 # =============================================================================
 # Model Settings

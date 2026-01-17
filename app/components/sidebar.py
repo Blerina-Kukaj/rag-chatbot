@@ -100,16 +100,16 @@ def render_sidebar() -> Dict[str, Any]:
         retrieval_method = st.radio(
             "Retrieval Method",
             options=["Vector Search", "Hybrid Search (Vector + BM25)"],
-            index=0,
-            help="Hybrid search combines semantic and keyword matching for better results."
+            index=1,  # Default to Hybrid Search
+            help="Hybrid search combines semantic and keyword matching - ideal for scientific papers."
         )
         use_hybrid = retrieval_method == "Hybrid Search (Vector + BM25)"
         
         # Reranking option
         use_reranking = st.checkbox(
             "Enable Reranking",
-            value=False,
-            help="Use cross-encoder to rerank retrieved documents for better relevance."
+            value=True,
+            help="Use cross-encoder to rerank retrieved research chunks for better relevance."
         )
         
         st.divider()

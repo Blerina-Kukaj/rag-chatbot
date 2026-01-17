@@ -81,12 +81,33 @@ def display_message(message: Dict[str, Any]) -> None:
     content = message.get("content", "")
     sources = message.get("sources", [])
     
-    with st.chat_message(role):
+    # Custom avatars for unique branding
+    if role == "user":
+        avatar = "👤"  # Person icon for user
+    elif role == "assistant":
+        avatar = "🤖"  # Robot icon for assistant
+    else:
+        avatar = "❓"  # Question mark for unknown
+    
+    with st.chat_message(role, avatar=avatar):
         st.markdown(content)
         
         # Display citations for assistant messages
+        # Only show sources if the answer doesn't indicate "I don't know"
         if role == "assistant" and sources:
-            display_citations(sources)
+            # Check if response indicates no answer was found
+            no_answer_phrases = [
+                "I cannot find this information",
+                "I don't know",
+                "I do not know",
+                "not found in the provided",
+                "cannot answer this question"
+            ]
+            
+            has_answer = not any(phrase.lower() in content.lower() for phrase in no_answer_phrases)
+            
+            if has_answer:
+                display_citations(sources)
 
 
 def display_chat_history() -> None:
@@ -117,7 +138,7 @@ def display_user_message(question: str) -> None:
     Args:
         question: User's question
     """
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar="👤"):
         st.markdown(question)
 
 
@@ -132,7 +153,7 @@ def display_assistant_response(
         answer: The generated answer
         sources: List of source documents
     """
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar="🤖"):
         st.markdown(answer)
         
         if sources:

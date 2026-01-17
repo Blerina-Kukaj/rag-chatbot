@@ -57,6 +57,16 @@ INJECTION_PATTERNS = [
     r"(start|begin)\s+your\s+(response|answer)\s+with",
     r"respond\s+only\s+with",
     r"your\s+(first|next)\s+word\s+(must|should)\s+be",
+    
+    # Medical/scientific injection attempts
+    r"cure\s+(all\s+)?(diseases?|cancers?|conditions?)",
+    r"cure\s+my\s+(cancer|disease|condition|illness)",
+    r"how\s+(do\s+I|can\s+I|should\s+I)\s+(cure|treat|heal)\s+(my\s+)?(cancer|disease|condition)",
+    r"can\s+(you|AI)\s+cure\s+(my\s+)?(cancer|disease|condition)",
+    r"diagnose\s+(my|me|this)\s+(condition|disease|problem)",
+    r"prescribe\s+(medication|drugs?|treatment)",
+    r"medical\s+advice",
+    r"health\s+(recommendation|prescription)",
 ]
 
 # Patterns in documents that try to manipulate the AI
@@ -212,7 +222,7 @@ def validate_input(user_input: str) -> Tuple[bool, str, Optional[str]]:
     # Check for prompt injection
     result = detect_prompt_injection(user_input)
     
-    if not result.is_safe:
+    if not result.is_safe or result.risk_level in ["medium", "high"]:
         return False, (
             "I detected potentially unsafe content in your question. "
             "Please rephrase your question."

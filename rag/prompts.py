@@ -15,35 +15,35 @@ from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 
 
 # System instruction for grounded QA (prevents hallucinations)
-SYSTEM_MESSAGE = """You are a helpful AI assistant that answers questions based ONLY on the provided context documents.
+SYSTEM_MESSAGE = """You are a helpful AI assistant that answers questions based ONLY on the provided scientific research context.
 
 CRITICAL RULES YOU MUST FOLLOW:
-1. Answer ONLY using information explicitly stated in the provided context
-2. If the answer is NOT in the context, you MUST say: "I cannot find this information in the provided documents."
-3. NEVER make up information or use knowledge outside the provided context
-4. NEVER include any citation formatting, references, or placeholders like [Document Name, Page X, Chunk Y] in your answers
-5. Citations and sources will be added automatically by the system - do not include them yourself
-6. Be concise and direct in your answers
-7. If the context is ambiguous or incomplete, acknowledge this limitation
+1. Answer ONLY using information explicitly stated in the provided research papers
+2. If the answer is NOT in the context, you MUST say: "I cannot find this information in the provided research documents."
+3. NEVER make up information or use knowledge outside the provided scientific context
+4. Focus on evidence-based findings from the research papers
+5. When discussing AI applications, reference specific methodologies or results when available
+6. Be precise about study findings, limitations, and conclusions
+7. NEVER include any citation formatting in your answers - citations are added automatically
 
-Remember: It is better to say "I don't know" than to provide incorrect information."""
+Remember: Base answers on actual research findings, not general knowledge."""
 
 
 # Main QA prompt template
-QA_PROMPT_TEMPLATE = """Use the following context to answer the question. You must ONLY use information from the context provided below.
+QA_PROMPT_TEMPLATE = """Use the following scientific research context to answer the question. You must ONLY use information from the research papers provided.
 
-CONTEXT:
+RESEARCH CONTEXT:
 {context}
 
 QUESTION: {question}
 
 INSTRUCTIONS:
-- Answer based ONLY on the context above
-- If the answer is not in the context, say "I cannot find this information in the provided documents."
-- Be concise and accurate
-- IMPORTANT: Do NOT include ANY citation formatting, references, or placeholders in your answer
-- Citations and sources will be displayed automatically below your answer - you should not add them yourself
-- Just provide the factual answer without any brackets, references, or document mentions
+- Answer based ONLY on the research context above
+- Reference specific findings, methodologies, or results when relevant
+- If the answer is not in the research context, say "I cannot find this information in the provided research documents."
+- Be evidence-based and cite study implications when appropriate
+- IMPORTANT: Do NOT include ANY citation formatting in your answer
+- Just provide the research-based answer
 
 ANSWER:"""
 

@@ -505,12 +505,12 @@ def process_question(question: str, sidebar_state: dict) -> None:
                     st.session_state.vectorstore,
                     st.session_state.chunks,
                 )
-                retrieved_docs = hybrid_retriever.retrieve(retrieval_query, k=top_k * 2 if use_reranking else top_k)
+                retrieved_docs = hybrid_retriever.retrieve(question, k=top_k * 2 if use_reranking else top_k)
             else:
                 # Use standard vector retrieval
                 retrieved_docs = retrieve_documents(
                     st.session_state.vectorstore,
-                    retrieval_query,
+                    question,
                     k=top_k * 2 if use_reranking else top_k,
                     filter_dict=metadata_filter,
                 )
@@ -529,7 +529,7 @@ def process_question(question: str, sidebar_state: dict) -> None:
                 
                 if st.session_state.reranker:
                     retrieved_docs = st.session_state.reranker.rerank_documents(
-                        retrieval_query, retrieved_docs, top_k=top_k
+                        question, retrieved_docs, top_k=top_k
                     )
                 else:
                     retrieved_docs = retrieved_docs[:top_k]
