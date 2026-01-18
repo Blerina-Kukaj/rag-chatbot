@@ -13,6 +13,9 @@ This package provides all core functionality for the RAG chatbot:
 Project: Giga Academy Cohort IV - RAG Chatbot
 """
 
+__version__ = "1.0.0"
+__author__ = "Giga Academy Cohort IV"
+
 from rag.ingestion import (
     load_document,
     load_documents_from_directory,
@@ -20,7 +23,7 @@ from rag.ingestion import (
     is_supported_file,
     SUPPORTED_EXTENSIONS,
 )
-from rag.chunking import chunk_documents, clean_text
+from rag.chunking import chunk_documents
 from rag.embeddings import get_embeddings_model
 from rag.vector_store import (
     create_vector_store,
@@ -36,8 +39,6 @@ from rag.reranker import CrossEncoderReranker, rerank_documents
 from rag.guardrails import (
     detect_prompt_injection,
     validate_input,
-    wrap_context_safely,
-    get_safe_system_prompt,
 )
 
 __all__ = [
@@ -49,7 +50,6 @@ __all__ = [
     "SUPPORTED_EXTENSIONS",
     # Chunking
     "chunk_documents",
-    "clean_text",
     # Embeddings
     "get_embeddings_model",
     # Vector Store
@@ -74,6 +74,4 @@ __all__ = [
     # Guardrails
     "detect_prompt_injection",
     "validate_input",
-    "wrap_context_safely",
-    "get_safe_system_prompt",
 ]

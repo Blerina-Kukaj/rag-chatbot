@@ -124,45 +124,6 @@ def clear_chat_history() -> None:
     st.session_state.messages = []
 
 
-def render_chat_input() -> Optional[str]:
-    """
-    Render the chat input field.
-    
-    Returns:
-        User's input question if submitted, otherwise None
-    """
-    return st.chat_input("Ask a question about your documents...")
-
-
-def display_user_message(question: str) -> None:
-    """
-    Display a user message immediately (before adding to history).
-    
-    Args:
-        question: User's question
-    """
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(question)
-
-
-def display_assistant_response(
-    answer: str,
-    sources: List[Dict[str, Any]]
-) -> None:
-    """
-    Display an assistant response with citations.
-    
-    Args:
-        answer: The generated answer
-        sources: List of source documents
-    """
-    with st.chat_message("assistant", avatar="🤖"):
-        st.markdown(answer)
-        
-        if sources:
-            display_citations(sources)
-
-
 def display_thinking_indicator() -> Any:
     """
     Display a thinking/processing indicator.

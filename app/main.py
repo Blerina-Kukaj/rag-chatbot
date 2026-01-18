@@ -39,10 +39,9 @@ from app.config import (
 from app.components.sidebar import render_sidebar
 from app.components.chat import (
     initialize_chat_history,
-    render_chat_interface,
+    display_chat_history,
+    render_chat_input,
     add_message,
-    display_user_message,
-    display_assistant_response,
     display_welcome_message,
     display_error_message,
     display_success_message,
@@ -71,7 +70,7 @@ from rag.retriever import create_retriever, retrieve_documents
 from rag.qa_chain import create_qa_chain, ask_question, get_source_details, ConversationMemory
 from rag.hybrid_search import create_hybrid_retriever
 from rag.reranker import CrossEncoderReranker
-from rag.guardrails import validate_input, wrap_context_safely, detect_prompt_injection
+from rag.guardrails import validate_input, detect_prompt_injection
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.documents import Document
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
@@ -320,16 +319,16 @@ def build_vector_store(
     Build the vector store from uploaded documents.
     """
     try:
-        # Check API key first
+        # Validate API key before processing
         if not validate_api_key():
             display_error_message(ERROR_API_KEY)
             return False
         
         with st.spinner(PROCESSING_MESSAGE):
-            # Step 1: Load documents
             status = st.empty()
             status.info("Loading documents...")
             
+            # Load and validate documents
             documents = load_uploaded_files(file_paths)
             
             if not documents:
@@ -338,7 +337,7 @@ def build_vector_store(
             
             status.info(f"Loaded {len(documents)} document(s)")
             
-            # Step 2: Chunk documents
+            # Split documents into chunks
             status.info("Chunking documents...")
             
             chunks = chunk_documents(
@@ -351,29 +350,29 @@ def build_vector_store(
                 display_error_message("No chunks created. Documents may be empty.")
                 return False
             
-            # Store chunks for hybrid search
+            # Store chunks for hybrid search functionality
             st.session_state.chunks = chunks
             
-            # Extract unique document names for filters
+            # Extract document metadata for filtering
             unique_docs = set(chunk.metadata.get("filename", "Unknown") for chunk in chunks)
             st.session_state.available_documents = sorted(list(unique_docs))
             
-            # Get chunking stats
+            # Display chunking statistics
             stats = get_chunking_stats(chunks)
             status.info(
                 f"Created {stats['total_chunks']} chunks "
                 f"(avg {stats['avg_tokens']:.0f} tokens)"
             )
             
-            # Step 3: Create embeddings model
+            # Initialize embeddings model
             status.info("Creating embeddings...")
             embeddings = get_embeddings_model()
             
-            # Step 4: Create vector store
+            # Build FAISS vector store
             status.info("Building vector store...")
             vectorstore = create_vector_store(chunks, embeddings)
             
-            # Step 5: Save to disk
+            # Persist vector store to disk
             status.info("Saving vector store...")
             save_vector_store(vectorstore, VECTORSTORE_DIR)
             
@@ -381,9 +380,9 @@ def build_vector_store(
             st.session_state.vectorstore = vectorstore
             st.session_state.documents_processed = True
             st.session_state.doc_count = stats['total_chunks']
-            st.session_state.qa_chain = None  # Reset chain
+            st.session_state.qa_chain = None
             
-            # Clear chat history and memory when rebuilding
+            # Reset chat history for new document set
             clear_chat_history()
             
             status.empty()
@@ -454,30 +453,26 @@ def process_question(question: str, sidebar_state: dict) -> None:
     start_time = time.time()
     guardrail_triggered = False
     
-    # Get settings from sidebar
+    # Extract configuration from sidebar settings
     top_k = sidebar_state["top_k"]
     use_hybrid = sidebar_state["use_hybrid"]
     use_reranking = sidebar_state["use_reranking"]
     use_memory = sidebar_state["use_memory"]
     enable_guardrails = sidebar_state["enable_guardrails"]
-    metadata_filter = sidebar_state.get("metadata_filter")
     
-    # Initialize timing
+    # Initialize performance metrics
     retrieval_start = 0.0
     retrieval_time = 0.0
     generation_time = 0.0
     
-    # Step 1: Guardrails check
+    # Validate input with guardrails if enabled
     if enable_guardrails:
         is_valid, message, sanitized = validate_input(question)
         if not is_valid:
-            display_user_message(question)
             add_message("user", question)
-            display_warning_message(message)
             add_message("assistant", message)
             guardrail_triggered = True
             
-            # Log blocked query
             log_query(
                 question=question,
                 answer=message,
@@ -487,21 +482,16 @@ def process_question(question: str, sidebar_state: dict) -> None:
                 generation_time=0.0,
                 guardrail_triggered=True,
             )
+            st.rerun()
             return
         
-        # Check for medium risk
+        # Check for prompt injection attempts
         result = detect_prompt_injection(question)
         if result.risk_level in ["medium", "high"]:
-            display_user_message(question)
             add_message("user", question)
-            display_warning_message(
-                "I detected potentially unsafe content in your question. "
-                "Please rephrase your question."
-            )
             add_message("assistant", "I detected potentially unsafe content in your question. Please rephrase your question.")
             guardrail_triggered = True
             
-            # Log blocked query
             log_query(
                 question=question,
                 answer="Guardrail blocked: potentially unsafe content",
@@ -511,67 +501,59 @@ def process_question(question: str, sidebar_state: dict) -> None:
                 generation_time=0.0,
                 guardrail_triggered=True,
             )
+            st.rerun()
             return
     
-    # Display user message
-    display_user_message(question)
-    add_message("user", question)
+    # Prevent duplicate message display by checking if question already exists
+    if not st.session_state.messages or st.session_state.messages[-1].get("content") != question:
+        add_message("user", question)
+        st.session_state.pending_question = question
+        st.rerun()
+        return
     
-    # Generate answer
+    # Process question and generate response
     with display_thinking_indicator():
         try:
-            # Step 3: Prepare query for retrieval
-            # If memory is enabled, add context to help retrieval understand references
+            # Enhance query with conversation context if memory is enabled
             retrieval_query = question
             if use_memory and st.session_state.conversation_memory.turns:
-                # Get last topic for context - be more aggressive with context addition
                 last_turn = st.session_state.conversation_memory.turns[-1]
                 last_question = last_turn.get("question", "")
                 last_answer = last_turn.get("answer", "")
 
-                # Add context for questions that likely refer to previous topic
-                # Check for pronouns, follow-up indicators, or short questions
+                # Detect follow-up questions that may require previous context
                 follow_up_indicators = ["it", "its", "this", "that", "these", "those", "what about", "how about"]
                 has_follow_up = any(indicator in question.lower() for indicator in follow_up_indicators)
                 is_short_question = len(question.split()) <= 7
 
                 if has_follow_up or is_short_question:
-                    # Create a more informative retrieval query
                     retrieval_query = f"Previous context: {last_question} - {last_answer[:100]}... Current question: {question}"
             
-            # Step 3b: Retrieve relevant documents
+            # Retrieve relevant documents
             retrieval_method = "vector"
             retrieval_start = time.time()
             
+            # Use hybrid search (vector + BM25) if enabled
             if use_hybrid and st.session_state.chunks:
-                # Use hybrid retrieval
                 retrieval_method = "hybrid"
                 hybrid_retriever = create_hybrid_retriever(
                     st.session_state.vectorstore,
                     st.session_state.chunks,
                 )
                 retrieved_docs = hybrid_retriever.retrieve(question, k=top_k * 2 if use_reranking else top_k)
-                
-                # Apply metadata filter if specified
-                if metadata_filter and retrieved_docs:
-                    retrieved_docs = [
-                        doc for doc in retrieved_docs
-                        if all(doc.metadata.get(k) == v for k, v in metadata_filter.items())
-                    ]
             else:
-                # Use standard vector retrieval
+                # Standard vector similarity search
                 retrieved_docs = retrieve_documents(
                     st.session_state.vectorstore,
                     question,
                     k=top_k * 2 if use_reranking else top_k,
-                    filter_dict=metadata_filter,
                 )
             
-            # Step 4: Reranking (optional)
+            # Apply cross-encoder reranking if enabled
             if use_reranking and retrieved_docs:
                 retrieval_method = "hybrid+rerank" if use_hybrid else "vector+rerank"
                 
-                # Lazy load reranker
+                # Lazy-load reranker model to optimize memory
                 if st.session_state.reranker is None:
                     try:
                         st.session_state.reranker = CrossEncoderReranker()
@@ -586,41 +568,37 @@ def process_question(question: str, sidebar_state: dict) -> None:
                 else:
                     retrieved_docs = retrieved_docs[:top_k]
             
-            # Ensure we have top_k docs
+            # Ensure final document count matches top_k setting
             retrieved_docs = retrieved_docs[:top_k]
             retrieval_time = time.time() - retrieval_start
             
-            # Step 5: Create retriever and QA chain
-            # If we manually retrieved docs (hybrid/reranking), use those instead of re-retrieving
+            # Create retriever with pre-fetched or dynamic documents
             if use_hybrid or use_reranking:
-                # Use pre-fetched retriever to preserve our hybrid/reranked results
                 retriever = PreFetchedRetriever(documents=retrieved_docs)
             else:
-                # Standard vector retriever
                 retriever = create_retriever(
                     st.session_state.vectorstore,
                     k=top_k,
-                    filter_dict=metadata_filter,
                 )
             
+            # Initialize QA chain with LangChain
             qa_chain = create_qa_chain(retriever)
             
-            # Step 6: Ask question with conversation memory
+            # Include conversation history if memory is enabled
             chat_history = None
             if use_memory:
-                # Get previous conversation context
                 chat_history = st.session_state.conversation_memory.get_formatted_history()
             
-            # Ask the question
+            # Generate answer using LLM
             generation_start = time.time()
             response = ask_question(qa_chain, question, chat_history)
             generation_time = time.time() - generation_start
             
-            # Extract answer and sources
+            # Extract answer and source documents
             answer = response.get("result", "I couldn't generate an answer.")
             sources = get_source_details(response)
             
-            # Log query metrics
+            # Log metrics to observability dashboard
             log_query(
                 question=question,
                 answer=answer,
@@ -631,11 +609,11 @@ def process_question(question: str, sidebar_state: dict) -> None:
                 guardrail_triggered=False,
             )
             
-            # Don't show sources for "I don't know" responses
+            # Suppress sources for "I don't know" responses
             if "cannot find" in answer.lower() and "provided" in answer.lower():
                 sources = []
             
-            # Step 7: Update conversation memory AFTER getting the answer
+            # Update conversation memory with current exchange
             if use_memory:
                 st.session_state.conversation_memory.add_turn(
                     question=question,
@@ -643,19 +621,17 @@ def process_question(question: str, sidebar_state: dict) -> None:
                     sources=sources,
                 )
             
-            # Calculate response time
             response_time_ms = (time.time() - start_time) * 1000
             
-            # Display response with citations
-            display_assistant_response(answer, sources)
-            
-            # Add to chat history
+            # Add assistant response to chat history
             add_message("assistant", answer, sources)
+            
+            st.rerun()
         
         except Exception as e:
             error_msg = f"Error generating answer: {str(e)}"
-            display_error_message(error_msg)
             add_message("assistant", error_msg)
+            st.rerun()
 
 
 # =============================================================================
@@ -663,19 +639,19 @@ def process_question(question: str, sidebar_state: dict) -> None:
 # =============================================================================
 def main() -> None:
     """Main application entry point."""
-    # Apply custom monochromatic styling
+    # Apply custom CSS styling
     apply_custom_styling()
     
-    # Initialize session state
+    # Initialize session state variables
     initialize_session_state()
     
-    # Display title and description
+    # Display application header
     st.title(APP_TITLE)
     
-    # Render sidebar and get settings
+    # Render sidebar and capture user settings
     sidebar_state = render_sidebar()
     
-    # Handle build button click
+    # Handle vector store build request
     if sidebar_state["build_button"]:
         if not sidebar_state["document_paths"]:
             display_error_message(NO_DOCUMENTS_MESSAGE)
@@ -686,11 +662,11 @@ def main() -> None:
                 sidebar_state["chunk_overlap"],
             )
     
-    # Handle clear button click
+    # Handle vector store clear request
     if sidebar_state["clear_button"]:
         handle_clear_vector_store()
     
-    # Try to load existing vector store on first run
+    # Attempt to load existing vector store on startup
     if not st.session_state.documents_processed:
         load_existing_vector_store()
     
@@ -706,23 +682,28 @@ def main() -> None:
         if not st.session_state.documents_processed:
             display_welcome_message(WELCOME_MESSAGE)
         
-        # Render chat interface
-        user_question = render_chat_interface()
+        # Display chat history first
+        display_chat_history()
         
-        # Process question if submitted
-        if user_question:
-            if not st.session_state.documents_processed:
-                display_error_message(NO_VECTORSTORE_MESSAGE)
-            else:
-                process_question(user_question, sidebar_state)
+        # Process pending question (spinner will appear above the input)
+        if "pending_question" in st.session_state and st.session_state.pending_question:
+            question_to_process = st.session_state.pending_question
+            st.session_state.pending_question = None
+            process_question(question_to_process, sidebar_state)
+        else:
+            # Render chat input at the bottom
+            user_question = render_chat_input()
+            
+            if user_question:
+                if not st.session_state.documents_processed:
+                    display_error_message(NO_VECTORSTORE_MESSAGE)
+                else:
+                    process_question(user_question, sidebar_state)
     
     with tab2:
-        # Render observability dashboard
+        # Display analytics and performance metrics
         render_observability_dashboard()
 
 
-# =============================================================================
-# Entry Point
-# =============================================================================
 if __name__ == "__main__":
     main()

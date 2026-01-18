@@ -18,7 +18,7 @@ This RAG chatbot answers questions using a collection of 37 PMC AI healthcare re
 - "I don't know" handling for unavailable information
 - Simple, clean web UI
 
-### Nice-to-Have Features (All 6 Implemented!)
+### Nice-to-Have Features (5 Implemented!)
 
 **Core Features (3 required):**
 - **Hybrid Search**: BM25 + semantic search with Reciprocal Rank Fusion
@@ -27,7 +27,6 @@ This RAG chatbot answers questions using a collection of 37 PMC AI healthcare re
 
 **Additional Features (3 bonus):**
 - **Conversation Memory**: Short-term context (3 turns) while maintaining retrieval grounding
-- **Metadata Filters**: Filter search results by document name
 - **Observability Dashboard**: Real-time metrics, query history, and performance analytics
 
 ## Dataset
@@ -111,7 +110,6 @@ streamlit run app/main.py
 - **Reranking**: Enable for improved answer relevance
 - **Conversation Memory**: Maintains context across 3 turns
 - **Guardrails**: Automatically blocks unsafe prompts
-- **Metadata Filters**: Restrict search to specific documents
 - **Observability Dashboard**: Real-time metrics, query history, performance charts
 
 ## Architecture
