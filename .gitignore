@@ -66,5 +66,6 @@ scripts/
 
 # Data
 data/
-
+# TESTING FILES
+TEST_SCENARIOS.md
 test_rag.py

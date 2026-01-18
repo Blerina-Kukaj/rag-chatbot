@@ -106,83 +106,14 @@ class CrossEncoderReranker:
         return [doc for doc, score in reranked]
 
 
-# Simple LLM-based reranker (fallback if sentence-transformers not available)
-class LLMReranker:
-    """
-    Simple reranker using OpenAI to score relevance.
-    
-    Fallback option when cross-encoder models aren't available.
-    """
-    
-    def __init__(self):
-        """Initialize LLM reranker."""
-        from langchain_openai import ChatOpenAI
-        from dotenv import load_dotenv
-        
-        load_dotenv()
-        
-        self.llm = ChatOpenAI(
-            model="gpt-3.5-turbo",
-            temperature=0,
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
-        )
-    
-    def rerank(
-        self,
-        query: str,
-        documents: List[Document],
-        top_k: Optional[int] = None,
-    ) -> List[Tuple[Document, float]]:
-        """
-        Rerank documents using LLM scoring.
-        
-        Note: This is more expensive than cross-encoder reranking.
-        """
-        if not documents:
-            return []
-        
-        scored_docs = []
-        
-        for doc in documents:
-            prompt = f"""Rate the relevance of this document to the query on a scale of 0-10.
-            
-Query: {query}
-
-Document: {doc.page_content[:500]}
-
-Respond with ONLY a number from 0-10."""
-            
-            try:
-                response = self.llm.invoke(prompt)
-                score = float(response.content.strip())
-            except:
-                score = 5.0  # Default score on error
-            
-            scored_docs.append((doc, score))
-        
-        # Sort by score
-        scored_docs.sort(key=lambda x: x[1], reverse=True)
-        
-        if top_k:
-            scored_docs = scored_docs[:top_k]
-        
-        return scored_docs
-
-
-def get_reranker(use_cross_encoder: bool = True) -> CrossEncoderReranker:
+def get_reranker() -> CrossEncoderReranker:
     """
     Get a reranker instance.
     
-    Args:
-        use_cross_encoder: Whether to use cross-encoder (recommended)
-        
     Returns:
-        Reranker instance
+        CrossEncoderReranker instance
     """
-    if use_cross_encoder:
-        return CrossEncoderReranker()
-    else:
-        return LLMReranker()
+    return CrossEncoderReranker()
 
 
 def rerank_documents(

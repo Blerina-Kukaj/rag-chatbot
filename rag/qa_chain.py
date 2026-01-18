@@ -201,56 +201,6 @@ Note: Use the previous conversation to understand context, but answer only from 
     return response
 
 
-def format_answer_with_citations(response: Dict[str, Any]) -> str:
-    """
-    Format the QA chain response with citations.
-    
-    Args:
-        response: Response from ask_question()
-        
-    Returns:
-        Formatted answer string with citations
-    """
-    answer = response.get("result", "No answer generated.")
-    source_docs = response.get("source_documents", [])
-    
-    if not source_docs:
-        return answer
-    
-    # Build citations list
-    citations = []
-    seen = set()
-    
-    for doc in source_docs:
-        filename = doc.metadata.get("filename", "Unknown")
-        page = doc.metadata.get("page_display")
-        chunk_id = doc.metadata.get("chunk_id", 0)
-        
-        # Create citation string
-        citation = f"{filename}"
-        if page is not None:
-            citation += f", Page {page}"
-        citation += f", Chunk {chunk_id}"
-        
-        if citation not in seen:
-            seen.add(citation)
-            citations.append(citation)
-    
-    # Format final answer with citations
-    formatted = f"{answer}\n\n"
-    
-    # Don't show sources if the answer indicates information not found
-    if "cannot find" in answer.lower() and "provided documents" in answer.lower():
-        return formatted.strip()
-    
-    if citations:
-        formatted += "**Sources:**\n"
-        for i, citation in enumerate(citations, 1):
-            formatted += f"{i}. {citation}\n"
-    
-    return formatted.strip()
-
-
 def get_source_details(response: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Extract detailed source information from QA chain response.

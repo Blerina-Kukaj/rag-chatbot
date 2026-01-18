@@ -50,6 +50,11 @@ from app.components.chat import (
     display_thinking_indicator,
     clear_chat_history,
 )
+from app.components.observability import (
+    initialize_metrics,
+    log_query,
+    render_observability_dashboard,
+)
 
 # Import RAG modules
 from rag.ingestion import load_uploaded_files
@@ -164,9 +169,12 @@ def apply_custom_styling():
         box-shadow: none !important;
     }
     .st-emotion-cache-1353z0o{
-        background: #rgb(48,48,48) !important;
-        background-color: rgb(48,48,48) !important;
-    
+        background: #303030 !important;
+        background-color: #303030 !important;
+    }
+   .st-fw {
+        background-color: #303030;
+    }
     /* Buttons - monochromatic */
     .stButton button {
         background-color: #ffffff !important;
@@ -233,8 +241,7 @@ def apply_custom_styling():
     
     /* Streamlit element container */
     .st-ek {
-        background-color: rgb(48,48,48) !important;
-        color: #f0f0f0 !important;
+        background-color: transparent !important;
     }
     
     
@@ -297,8 +304,9 @@ def initialize_session_state() -> None:
         st.session_state.conversation_memory = ConversationMemory()
     
     # Initialize chat history
-    initialize_chat_history()
-
+    initialize_chat_history()    
+    # Initialize observability metrics
+    initialize_metrics()
 
 # =============================================================================
 # Vector Store Operations
@@ -430,6 +438,7 @@ def handle_clear_vector_store() -> None:
         st.session_state.chunks = []
         st.session_state.available_documents = []
         clear_chat_history()
+        initialize_metrics() 
         display_success_message("✅ Vector store cleared successfully!")
     except Exception as e:
         display_error_message(f"Error clearing vector store: {str(e)}")
@@ -453,6 +462,11 @@ def process_question(question: str, sidebar_state: dict) -> None:
     enable_guardrails = sidebar_state["enable_guardrails"]
     metadata_filter = sidebar_state.get("metadata_filter")
     
+    # Initialize timing
+    retrieval_start = 0.0
+    retrieval_time = 0.0
+    generation_time = 0.0
+    
     # Step 1: Guardrails check
     if enable_guardrails:
         is_valid, message, sanitized = validate_input(question)
@@ -462,6 +476,17 @@ def process_question(question: str, sidebar_state: dict) -> None:
             display_warning_message(message)
             add_message("assistant", message)
             guardrail_triggered = True
+            
+            # Log blocked query
+            log_query(
+                question=question,
+                answer=message,
+                sources=[],
+                retrieval_method="blocked",
+                retrieval_time=0.0,
+                generation_time=0.0,
+                guardrail_triggered=True,
+            )
             return
         
         # Check for medium risk
@@ -475,6 +500,17 @@ def process_question(question: str, sidebar_state: dict) -> None:
             )
             add_message("assistant", "I detected potentially unsafe content in your question. Please rephrase your question.")
             guardrail_triggered = True
+            
+            # Log blocked query
+            log_query(
+                question=question,
+                answer="Guardrail blocked: potentially unsafe content",
+                sources=[],
+                retrieval_method="blocked",
+                retrieval_time=0.0,
+                generation_time=0.0,
+                guardrail_triggered=True,
+            )
             return
     
     # Display user message
@@ -488,15 +524,24 @@ def process_question(question: str, sidebar_state: dict) -> None:
             # If memory is enabled, add context to help retrieval understand references
             retrieval_query = question
             if use_memory and st.session_state.conversation_memory.turns:
-                # Get last topic for context
+                # Get last topic for context - be more aggressive with context addition
                 last_turn = st.session_state.conversation_memory.turns[-1]
                 last_question = last_turn.get("question", "")
-                # Add simple context hint for short questions
-                if len(question.split()) <= 5 and last_question:
-                    retrieval_query = f"{last_question} {question}"
+                last_answer = last_turn.get("answer", "")
+
+                # Add context for questions that likely refer to previous topic
+                # Check for pronouns, follow-up indicators, or short questions
+                follow_up_indicators = ["it", "its", "this", "that", "these", "those", "what about", "how about"]
+                has_follow_up = any(indicator in question.lower() for indicator in follow_up_indicators)
+                is_short_question = len(question.split()) <= 7
+
+                if has_follow_up or is_short_question:
+                    # Create a more informative retrieval query
+                    retrieval_query = f"Previous context: {last_question} - {last_answer[:100]}... Current question: {question}"
             
             # Step 3b: Retrieve relevant documents
             retrieval_method = "vector"
+            retrieval_start = time.time()
             
             if use_hybrid and st.session_state.chunks:
                 # Use hybrid retrieval
@@ -506,6 +551,13 @@ def process_question(question: str, sidebar_state: dict) -> None:
                     st.session_state.chunks,
                 )
                 retrieved_docs = hybrid_retriever.retrieve(question, k=top_k * 2 if use_reranking else top_k)
+                
+                # Apply metadata filter if specified
+                if metadata_filter and retrieved_docs:
+                    retrieved_docs = [
+                        doc for doc in retrieved_docs
+                        if all(doc.metadata.get(k) == v for k, v in metadata_filter.items())
+                    ]
             else:
                 # Use standard vector retrieval
                 retrieved_docs = retrieve_documents(
@@ -536,6 +588,7 @@ def process_question(question: str, sidebar_state: dict) -> None:
             
             # Ensure we have top_k docs
             retrieved_docs = retrieved_docs[:top_k]
+            retrieval_time = time.time() - retrieval_start
             
             # Step 5: Create retriever and QA chain
             # If we manually retrieved docs (hybrid/reranking), use those instead of re-retrieving
@@ -559,14 +612,27 @@ def process_question(question: str, sidebar_state: dict) -> None:
                 chat_history = st.session_state.conversation_memory.get_formatted_history()
             
             # Ask the question
+            generation_start = time.time()
             response = ask_question(qa_chain, question, chat_history)
+            generation_time = time.time() - generation_start
             
             # Extract answer and sources
             answer = response.get("result", "I couldn't generate an answer.")
             sources = get_source_details(response)
             
+            # Log query metrics
+            log_query(
+                question=question,
+                answer=answer,
+                sources=sources,
+                retrieval_method=retrieval_method,
+                retrieval_time=retrieval_time,
+                generation_time=generation_time,
+                guardrail_triggered=False,
+            )
+            
             # Don't show sources for "I don't know" responses
-            if "cannot find" in answer.lower() and "provided documents" in answer.lower():
+            if "cannot find" in answer.lower() and "provided" in answer.lower():
                 sources = []
             
             # Step 7: Update conversation memory AFTER getting the answer
@@ -630,19 +696,29 @@ def main() -> None:
     
     st.divider()
     
-    # Show welcome message if no vector store
-    if not st.session_state.documents_processed:
-        display_welcome_message(WELCOME_MESSAGE)
+    # =================================================================
+    # Tabbed Interface: Chat + Observability Dashboard
+    # =================================================================
+    tab1, tab2 = st.tabs(["Chat", "Dashboard"])
     
-    # Render chat interface
-    user_question = render_chat_interface()
-    
-    # Process question if submitted
-    if user_question:
+    with tab1:
+        # Show welcome message if no vector store
         if not st.session_state.documents_processed:
-            display_error_message(NO_VECTORSTORE_MESSAGE)
-        else:
-            process_question(user_question, sidebar_state)
+            display_welcome_message(WELCOME_MESSAGE)
+        
+        # Render chat interface
+        user_question = render_chat_interface()
+        
+        # Process question if submitted
+        if user_question:
+            if not st.session_state.documents_processed:
+                display_error_message(NO_VECTORSTORE_MESSAGE)
+            else:
+                process_question(user_question, sidebar_state)
+    
+    with tab2:
+        # Render observability dashboard
+        render_observability_dashboard()
 
 
 # =============================================================================

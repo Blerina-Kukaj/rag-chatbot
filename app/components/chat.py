@@ -98,10 +98,13 @@ def display_message(message: Dict[str, Any]) -> None:
             # Check if response indicates no answer was found
             no_answer_phrases = [
                 "I cannot find this information",
+                "I cannot find this information in the provided",
                 "I don't know",
                 "I do not know",
                 "not found in the provided",
-                "cannot answer this question"
+                "cannot answer this question",
+                "no information available",
+                "unable to find"
             ]
             
             has_answer = not any(phrase.lower() in content.lower() for phrase in no_answer_phrases)

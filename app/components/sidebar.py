@@ -53,10 +53,6 @@ def render_sidebar() -> Dict[str, Any]:
     Returns:
         Dictionary with sidebar state and user selections
     """
-    # Disabled features (set to defaults)
-    use_memory = False
-    metadata_filter = None
-    
     with st.sidebar:
         st.title("Settings")
         
@@ -131,6 +127,30 @@ def render_sidebar() -> Dict[str, Any]:
                 value=True,
                 help="Detect and prevent prompt injection attacks."
             )
+            
+            st.divider()
+            
+            # Metadata Filters
+            st.caption("**Metadata Filters**")
+            
+            # Get available documents for filtering
+            available_docs = []
+            if "available_documents" in st.session_state:
+                available_docs = st.session_state.available_documents
+            
+            metadata_filter = None
+            if available_docs:
+                filter_by_doc = st.selectbox(
+                    "Filter by Document",
+                    options=["All Documents"] + available_docs,
+                    index=0,
+                    help="Restrict search to specific document(s)"
+                )
+                
+                if filter_by_doc != "All Documents":
+                    metadata_filter = {"filename": filter_by_doc}
+            else:
+                st.caption("_No documents loaded yet_")
         
         st.divider()
         
@@ -221,19 +241,19 @@ def render_sidebar() -> Dict[str, Any]:
             A Retrieval-Augmented Generation chatbot with advanced features.
             
             **Tech Stack:**
-            - 🦜 LangChain
-            - 🔍 FAISS Vector Store
-            - 🧠 OpenAI Embeddings
-            - 🎨 Streamlit
+            - LangChain
+            - FAISS Vector Store
+            - OpenAI Embeddings
+            - Streamlit
             
             **Features:**
-            - ✅ Document ingestion (PDF, MD)
-            - ✅ Token-based chunking
-            - ✅ Vector search
-            - ✅ Hybrid search (BM25 + Vector)
-            - ✅ Cross-encoder reranking
-            - ✅ Guardrails (security)
-            - ✅ Source citations
+            - Document ingestion (PDF, MD)
+            - Token-based chunking
+            - Vector search
+            - Hybrid search (BM25 + Vector)
+            - Cross-encoder reranking
+            - Guardrails (security)
+            - Source citations
             """)
         
         # Return all sidebar state
@@ -250,5 +270,5 @@ def render_sidebar() -> Dict[str, Any]:
             "use_memory": use_memory,
             "memory_turns": 5,  # Default
             "enable_guardrails": enable_guardrails,
-            "metadata_filter": None,  # Disabled
+            "metadata_filter": metadata_filter,
         }

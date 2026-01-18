@@ -63,7 +63,7 @@ INJECTION_PATTERNS = [
     r"cure\s+my\s+(cancer|disease|condition|illness)",
     r"how\s+(do\s+I|can\s+I|should\s+I)\s+(cure|treat|heal)\s+(my\s+)?(cancer|disease|condition)",
     r"can\s+(you|AI)\s+cure\s+(my\s+)?(cancer|disease|condition)",
-    r"diagnose\s+(my|me|this)\s+(condition|disease|problem)",
+    r"diagnose\s+(my|me|this)\s+(condition|disease|problem|symptoms?|illness|pain)",
     r"prescribe\s+(medication|drugs?|treatment)",
     r"medical\s+advice",
     r"health\s+(recommendation|prescription)",
