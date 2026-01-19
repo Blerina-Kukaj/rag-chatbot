@@ -33,10 +33,11 @@ ENV/
 env/
 .venv/
 
-# FAISS vector store
-vectorstore/
-*.faiss
-*.pkl
+# Note: vectorstore/ and data/ are committed for deployment
+# Uncomment below to exclude them in development:
+# vectorstore/
+# *.faiss
+# *.pkl
 
 # IDE
 .vscode/
@@ -64,8 +65,10 @@ logs/
 # Scripts
 scripts/
 
-# Data
-data/
-# TESTING FILES
-TEST_SCENARIOS.md
+# Note: data/ is committed for deployment with PDFs
+# Uncomment below to exclude in development:
+# data/
+
+# TESTING FILES (keep for documentation)
+# TEST_SCENARIOS.md
 test_rag.py
