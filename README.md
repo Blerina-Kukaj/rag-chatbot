@@ -2,6 +2,8 @@
 
 A sophisticated Retrieval-Augmented Generation (RAG) chatbot optimized for scientific content, specifically designed for **Giga Academy Cohort IV - Project #4**. This system provides grounded, evidence-based answers from a curated dataset of AI healthcare research papers with proper citations and guardrails.
 
+ **Live Demo**: [Deployed on Streamlit Cloud]
+
 ## Project Overview
 
 This RAG chatbot answers questions using a collection of 37 PMC AI healthcare research papers, providing:
@@ -25,7 +27,7 @@ This RAG chatbot answers questions using a collection of 37 PMC AI healthcare re
 - **Reranking**: Cross-encoder model for improved document ranking  
 - **Guardrails**: Advanced prompt injection detection with medical patterns
 
-**Additional Features (3 bonus):**
+**Additional Features :**
 - **Conversation Memory**: Short-term context (3 turns) while maintaining retrieval grounding
 - **Observability Dashboard**: Real-time metrics, query history, and performance analytics
 
@@ -52,11 +54,16 @@ This RAG chatbot answers questions using a collection of 37 PMC AI healthcare re
 
 ## Quick Start
 
-### Prerequisites
-- Python 3.10+
+### Option 1: Use Deployed Version
+Visit the [live demo] - the vector store is pre-built and loads instantly!
+
+### Option 2: Run Locally
+
+#### Prerequisites
+- Python 3.11+
 - OpenAI API key
 
-### Installation
+#### Installation
 
 ```bash
 # 1. Clone the repository
@@ -90,10 +97,12 @@ streamlit run app/main.py
 # The app will open in your browser at http://localhost:8501
 ```
 
-### First-Time Setup
-1. **Vector Store Creation**: The app will automatically build the vector store on first run
-2. **Document Processing**: 37 PMC PDFs → 1,218+ chunks optimized for scientific content
-3. **Ready to Query**: Start asking questions about AI in healthcare!
+### First-Time Setup (Local)
+1. **Pre-built Vector Store**: The vector store is included in the repository (1,218 chunks from 37 PDFs)
+2. **Instant Loading**: No waiting for document processing - the index loads immediately!
+3. **Ready to Query**: Start asking questions about AI in healthcare right away
+
+*To rebuild the vector store from scratch (optional):* Use the "Clear Vector Store" button in the sidebar, then click "Build Knowledge Base".
 
 ## Usage Examples
 
@@ -111,6 +120,16 @@ streamlit run app/main.py
 - **Conversation Memory**: Maintains context across 3 turns
 - **Guardrails**: Automatically blocks unsafe prompts
 - **Observability Dashboard**: Real-time metrics, query history, performance charts
+
+## Testing
+
+Comprehensive test scenarios are documented in [TEST_SCENARIOS.md](TEST_SCENARIOS.md), covering:
+- Basic functionality (grounding, citations, "I don't know" responses)
+- Hybrid search and reranking
+- Guardrails (prompt injection, medical advice)
+- Conversation memory (context maintenance without hallucination)
+- Observability dashboard
+
 
 ## Architecture
 
@@ -168,8 +187,16 @@ streamlit run app/main.py
 
 - **Prompt Injection Detection**: Blocks malicious inputs
 - **Medical Advice Filtering**: Prevents healthcare recommendations
-- **API Key Protection**: Secure environment variable handling
+- **API Key Protection**: Secure environment variable handling (Streamlit Secrets for deployment)
 - **Input Validation**: Sanitizes user queries
+
+## Deployment
+
+This project is deployed on **Streamlit Cloud** with:
+- Pre-built FAISS vector store for instant loading
+- Secure API key management via Streamlit Secrets
+- Python 3.11 runtime
+- All 37 PDFs and processed chunks included
 
 ## Acknowledgments
 
@@ -179,6 +206,3 @@ streamlit run app/main.py
 - **LangChain** for the RAG framework
 - **FAISS** for efficient vector search
 
----
-
-*Grounded answers from scientific literature, powered by modern AI.*
